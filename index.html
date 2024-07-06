@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Video Timeline Player</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <style>
+      #main {
+        width: 100%;
+        padding-right: 210px;
+      }
+      #main_video {
+        height: 100%; 
+        width: 100%;
+      }
+      #timeline {
+        width: 100%;
+        height: 470px;
+      }
+    </style>
+    </head>
+  <body>
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-9">
+          <video controls id="main_video"></video>
+        </div>
+      <div id="sidebar" class="col-3">
+        <div class="input-group mb-1">
+          <span class="input-group-text" id="timestamp">
+            Time
+          </span>
+          <input type="text" class="form-control" placeholder="Task?" id="task_text" >
+        </div>
+        <div class="input-group input-group-lg mb-1">
+          <span class="input-group-text">
+            <i class="bi bi-pause-circle" id="status_icon"></i>
+          </span>
+          <input type="text" class="form-control" placeholder="Any thing happend?" id="event_text" >
+        </div>
+
+        <div class="input-group mb-1">
+          <button type="button" class="btn btn-success" id="paly">Play</button>
+          <button type="button" class="btn btn-danger" id="pause">Pause</button>        
+          <button type="button" class="btn btn-primary" id="add">Append</button>
+          <input type="checkbox" class="btn-check" id="sync" autocomplete="off">
+          <label class="btn btn-outline-info" for="sync">Sync</label>
+          <button type="button" class="btn btn-primary" id="save">Save</button>
+        </div>
+        <div class="mb-1">
+          <textarea class="form-control" placeholder="Timeline here" id="timeline"></textarea>
+        </div>
+        <div class="mb-1">
+          <input class="form-control" type="file" accept="video/*" id="file_select" placeholder="video file"/>
+        </div>
+        <div class="input-group mb-1">
+          <label class="input-group-text">Speed</label>
+          <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" name="btnradio" id="speed_x05" autocomplete="off" onclick="setspeed(0.5)">
+            <label class="btn btn-outline-primary" for="speed_x05">x0.5</label>
+          
+            <input type="radio" class="btn-check" name="btnradio" id="speed_x10" autocomplete="off" onclick="setspeed(1)" checked>
+            <label class="btn btn-outline-primary" for="speed_x10">x1.0</label>
+          
+            <input type="radio" class="btn-check" name="btnradio" id="speed_x20" autocomplete="off" onclick="setspeed(2)">
+            <label class="btn btn-outline-primary" for="speed_x20">x2.0</label>
+
+            <input type="radio" class="btn-check" name="btnradio" id="speed_x40" autocomplete="off" onclick="setspeed(4)">
+            <label class="btn btn-outline-primary" for="speed_x40">x4.0</label>
+
+            <input type="radio" class="btn-check" name="btnradio" id="speed_x80" autocomplete="off" onclick="setspeed(8)">
+            <label class="btn btn-outline-primary" for="speed_x80">x8.0</label>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+    <script>
+        let video = document.getElementById("main_video");
+        let timestamp = document.getElementById("timestamp");
+        let timeline = document.getElementById("timeline");
+        let add = document.getElementById("add");
+        let event_text = document.getElementById("event_text");
+        let task_text = document.getElementById("task_text");
+        let file_select = document.getElementById("file_select");
+        let sync = document.getElementById("sync");
+        let save = document.getElementById("save");
+        let file_name = "timeline.txt";
+        function toTimeFormat(t) {
+            return new Date(t * 1000).toISOString().substr(11, 8);
+        }
+
+        video.addEventListener("timeupdate", function() {
+            let t = video.currentTime.toFixed(0);
+            timestamp.innerHTML = toTimeFormat(t);
+        });
+
+        let status_icon = document.getElementById("status_icon");
+        video.addEventListener("play", (e) => {
+            status_icon.className = "bi bi-play-circle";
+        });
+        video.addEventListener("pause", (e) => {
+            status_icon.className = "bi bi-pause-circle";
+        });
+
+        add.addEventListener("click", function() {
+            timeline.value += timestamp.innerHTML + " ["+ task_text.value + "] " + event_text.value + "\n";
+            event_text.value = "";
+            timeline.scrollTop = timeline.scrollHeight;
+            video.play();
+        });
+
+        event_text.addEventListener("keydown", (event) => {
+            if (event.keyCode === 13) {
+                event.preventDefault();
+                add.click();
+            }
+        });
+
+        let play_button = document.getElementById("paly");
+        play_button.addEventListener("click", (e) => {
+            video.play();
+        });
+
+        let pause_button = document.getElementById("pause");
+        pause_button.addEventListener("click", (e) => {
+            video.pause();
+        });
+
+        file_select.addEventListener('change', function() {
+          let file = this.files[0]
+          if (video.canPlayType(file.type) == '') {
+            alert('Can\'t play: "' + file.type + '" type!')
+            return
+          }
+          video.src = window.URL.createObjectURL(file)
+          file_name = file.name + ".txt";
+        })
+
+        if (typeof(localStorage) === "undefined") {
+          alert("localStorage not supported");
+        }
+
+        function setspeed(s){
+            video.playbackRate = s;
+        };
+
+        timeline.addEventListener("change", (e) => {
+            localStorage.setItem("timeline", timeline.value);
+        });
+
+        timeline.addEventListener("click", (e) => {
+            if (!sync.checked) {return;}
+            let lineNo = timeline.value.substr(0, timeline.selectionStart).split(/\r?\n|\r/).length;
+            let t = timeline.value.split(/\r?\n|\r/)[lineNo - 1];
+            let time = t.split(" ")[0];
+            let time_s = time.split(":");
+            let time_sec = parseInt(time_s[0]) * 3600 + parseInt(time_s[1]) * 60 + parseInt(time_s[2]);
+            video.currentTime = time_sec;
+        });
+
+        window.addEventListener("load", () => {
+            timeline.value = localStorage.getItem("timeline");
+        });
+
+        window.addEventListener("beforeunload", () => {
+            localStorage.setItem("timeline", timeline.value);
+        });
+
+        save.addEventListener("click", (e) => {
+          let text = timeline.value;
+          let elem = document.createElement('a');
+          elem.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+          elem.setAttribute('download', file_name);
+
+          elem.style.display = 'none';
+          document.body.appendChild(elem);
+          elem.click();
+          document.body.removeChild(elem);
+        });
+
+        window.addEventListener("keydown", (e) => {
+          if (e.code == "F1") {
+            e.preventDefault();
+            if (video.paused) {
+              video.play();
+            } else {
+              video.pause();
+              event_text.focus();
+            }
+          }
+        });
+    </script>
+  </body>
+</html>
+
+
