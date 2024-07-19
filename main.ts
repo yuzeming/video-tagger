@@ -1,3 +1,17 @@
+// Status UI.
+function setStatus_func(message) {
+  let status = {
+    fetch: document.querySelector("#fetch"),
+    demux: document.querySelector("#demux"),
+    decode: document.querySelector("#decode"),
+    render: document.querySelector("#render"),
+    currentTime: document.querySelector("#currentTime"),
+  };
+
+  for (const key in message.data) {
+    status[key].innerText = message.data[key];
+  }
+}
 
 let video = <HTMLVideoElement>document.getElementById("main_video")!;
 let timestamp = <HTMLSpanElement>document.getElementById("timestamp")!;
@@ -13,7 +27,7 @@ let progressbar = <HTMLDivElement>document.getElementById("progressbar")!;
 let bar = document.getElementById("bar")!;
 
 
-let thumbnail_db;
+let thumbnail_db: IDBDatabase | null = null;
 const openRequest = window.indexedDB.open("thumbnail_db", 1);
 
 openRequest.onerror = () => {
@@ -52,11 +66,11 @@ progressbar.addEventListener("mousemove", (e) => {
     thumbnail_time.innerHTML = time;
     let thumbnail_img = <HTMLImageElement> document.getElementById("thumbnail_img")!;
 
-    let transaction = thumbnail_db.transaction("thumbnail_db", "readonly");
+    let transaction = thumbnail_db!.transaction("thumbnail_db", "readonly");
     let objectStore = transaction.objectStore("thumbnail_db");
     let request = objectStore.get(t);
     request.addEventListener("success", (e) => {
-      let data = e.target.result;
+      let data = request.result;
       if (data == null) {return;}
       thumbnail_img.src = data.thumbnail;
     });
@@ -67,42 +81,6 @@ progressbar.addEventListener("mousemove", (e) => {
 //     tooltip.style.display = "none";
 // });
 
-
-function gen_thumbnail(vid) {
-  vid.currentTime = 0;
-  vid.addEventListener("loadeddata", () => {
-    console.log("loadeddata", new Date().getTime());
-    console.log(vid.videoWidth, vid.videoHeight);
-    const canvas = new OffscreenCanvas(160, 90);
-    canvas.width = 160;
-    canvas.height = 90;
-    let thumbnail_list = []
-    while (vid.currentTime < vid.duration) {
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      const thumbnail = ctx.toDataURL("image/png");
-      thumbnail_list.push(thumbnail);
-      vid.currentTime += 1;
-      if (thumbnail_list.length > 600) {break;} // debug
-      if (thumbnail_list.length % 60 == 0) {
-        console.log(thumbnail);
-      }
-    }
-    console.log("gen_thumbnail" , new Date().getTime());
-    const transaction = thumbnail_db.transaction("thumbnail_db", "readwrite");
-    const objectStore = transaction.objectStore("thumbnail_db");
-    for (let i = 0; i < thumbnail_list.length; i++) {
-      const request = objectStore.add({timestamp: i, thumbnail: thumbnail_list[i]});
-      // request.addEventListener("success", () => {
-      //   console.log("thumbnail added");
-      // });
-    }
-    console.log("objectStore" , new Date().getTime());
-  });
-}
-
-function initThumbnaildb() {
-}
 
 function toTimeFormat(t) {
     return new Date(t * 1000).toISOString().substr(11, 8);
@@ -140,7 +118,7 @@ add.addEventListener("click", () => {
 });
 
 event_text.addEventListener("keydown", (e) => {
-    if (e.keyCode === 13) {
+    if (e.code === "Enter") {
         e.preventDefault();
         add.click();
     }
@@ -156,6 +134,15 @@ pause_button.addEventListener("click", (e) => {
     video.pause();
 });
 
+// Worker setup.
+function start_worker(dataUri) {
+  const canvas = document.querySelector("canvas").transferControlToOffscreen();
+  const worker = new Worker("/out/worker.js");
+  worker.addEventListener("message", setStatus_func);
+  worker.postMessage({dataUri, canvas}, [canvas]);
+}
+
+
 file_select.addEventListener('change', () => {
   if (file_select.files == null || file_select.files.length == 0) {return;}
   let file = file_select.files[0]
@@ -164,7 +151,7 @@ file_select.addEventListener('change', () => {
     return
   }
   video.src = window.URL.createObjectURL(file)
-  gen_thumbnail(video.src);
+  start_worker(video.src);
   file_name = file.name + ".txt";
 })
 

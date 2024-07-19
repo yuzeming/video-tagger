@@ -99,14 +99,23 @@
             <div class="progress-bar bg-info" role="progressbar" id="bar">
             </div>
           </div>
-          <div id="tooltip">
+          <!-- <div id="tooltip">
             <img id="thumbnail_img" width="160" height="90"></img>
             <span id="thumbnail_time"></span>
-          </div>
+          </div> -->
       </div>
     </div>
-    <script src="main.js">
-    </script>
+    <script src="out/main.js"></script>
+    <div id="canvasContainer" style="width: 100%;">
+      <table cellspacing="8" id="status">
+        <tr><th align="right">Fetch</th><td id="fetch">Not started</td></tr>
+        <tr><th align="right">Demux</th><td id="demux">Not started</td></tr>
+        <tr><th align="right">Decode</th><td id="decode">Not started</td></tr>
+        <tr><th align="right">Render</th><td id="render">Not started</td></tr>
+        <tr><th align="right">Current Time</th><td id="currentTime">Not started</td></tr>
+      </table>
+      <canvas id="canvas" style="width: 100%;"></canvas>
+    </div>
   </body>
 </html>
 
