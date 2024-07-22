@@ -3,32 +3,12 @@ importScripts("demuxer_mp4.js");
 const ThumbnailHeight = 100;
 const ThumbnailWidth = 160;
 
-class Canvas2DRenderer {
-  #canvas: HTMLCanvasElement = null;
-  #ctx: CanvasRenderingContext2D = null;
-
-  constructor(canvas: HTMLCanvasElement) {
-    this.#canvas = canvas;
-    this.#ctx = canvas.getContext("2d");
-  }
-
-  draw(frame: VideoFrame) {
-    this.#canvas.width = frame.displayWidth;
-    this.#canvas.height = frame.displayHeight;
-    this.#ctx.drawImage(frame, 0, 0, frame.displayWidth, frame.displayHeight);
-  }
-};
 
 // Status UI. Messages are batched per animation frame.
 let pendingStatus = null;
 
 function setStatus(type, message) {
-  if (pendingStatus) {
-    pendingStatus[type] = message;
-  } else {
-    pendingStatus = {[type]: message};
-    self.requestAnimationFrame(statusAnimationFrame);
-  }
+  console.log(type, message);
 }
 
 function statusAnimationFrame() {
@@ -37,33 +17,54 @@ function statusAnimationFrame() {
 }
 
 // Rendering. Drawing is limited to once per animation frame.
-let renderer: Canvas2DRenderer = null;
-let pendingFrame = null;
 let startTime = null;
 let frameCount = 0;
 let currentTime = -1;
+let previousImageData = null;
 
-function renderFrame(frame, currentTime) {
-  if (!pendingFrame) {
-    // Schedule rendering in the next animation frame.
-    requestAnimationFrame(renderAnimationFrame);
-  } else {
-    // Close the current pending frame before replacing it.
-    pendingFrame.close();
+function CompareImages(imageData1: ImageData, imageData2: ImageData, width: number, height: number) {
+  let diff = 0;
+  for (let i = 0; i < width * height; i++) {
+    let tmp = i*4
+    let r1 = imageData1.data[tmp];
+    let g1 = imageData1.data[tmp + 1];
+    let b1 = imageData1.data[tmp + 2];
+    let r2 = imageData2.data[tmp];
+    let g2 = imageData2.data[tmp + 1];
+    let b2 = imageData2.data[tmp + 2];
+    let d = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+    if (d > 50) {
+      diff++;
+    }
+    if (diff > 1000) {
+      break;
+    }
   }
-  // Set or replace the pending frame.
-  pendingFrame = frame;
+  console.log(diff);
+  return diff;
 }
 
-function renderAnimationFrame() {
-  renderer.draw(pendingFrame);
-  pendingFrame = null;
+async function renderFrame(frame: VideoFrame, currentTime: number) {
+  let canvas = new OffscreenCanvas(frame.displayWidth, frame.displayHeight);
+  let context = canvas.getContext("2d");
+  context.drawImage(frame, 0, 0);
+  let imageData = context.getImageData(0, 0, frame.displayWidth, frame.displayHeight);
+  canvas.width = ThumbnailWidth;
+  canvas.height = ThumbnailHeight;
+  context.drawImage(frame, 0, 0, ThumbnailWidth, ThumbnailHeight);
+  let thumbnail = await canvas.convertToBlob({type: "image/jpeg", quality: 0.5});
+  let diff = 0;
+  if (previousImageData) {
+    // compare the current frame with the previous frame
+    diff = CompareImages(previousImageData, imageData, frame.displayWidth, frame.displayHeight);
+  }
+  postMessage({"diff": diff, "time": currentTime, "thumbnail": thumbnail});
+  previousImageData = imageData;
+  frame.close();
 }
 
 // Startup.
-async function start({dataUri, canvas}) {
-  renderer = new Canvas2DRenderer(canvas);
-
+async function start({dataUri}) {
   // Set up a VideoDecoder.
   const decoder = new VideoDecoder({
     output(frame) {
@@ -80,8 +81,6 @@ async function start({dataUri, canvas}) {
         setStatus("render", `${fps.toFixed(0)} fps`);
       }
       currentTime = Math.floor(frame.timestamp/1e6);
-      setStatus("currentTime", currentTime);
-      // Schedule the frame to be rendered.
       renderFrame(frame, currentTime);
     },
     error(e) {

@@ -1,17 +1,4 @@
-// Status UI.
-function setStatus_func(message) {
-  let status = {
-    fetch: document.querySelector("#fetch"),
-    demux: document.querySelector("#demux"),
-    decode: document.querySelector("#decode"),
-    render: document.querySelector("#render"),
-    currentTime: document.querySelector("#currentTime"),
-  };
-
-  for (const key in message.data) {
-    status[key].innerText = message.data[key];
-  }
-}
+let thumbnail_array = [];
 
 let video = <HTMLVideoElement>document.getElementById("main_video")!;
 let timestamp = <HTMLSpanElement>document.getElementById("timestamp")!;
@@ -23,26 +10,23 @@ let file_select = <HTMLInputElement>document.getElementById("file_select")!;
 let sync = <HTMLInputElement>document.getElementById("sync")!;
 let save = document.getElementById("save")!;
 let file_name = "timeline.txt";
-let progressbar = <HTMLDivElement>document.getElementById("progressbar")!;
+let progressbar = document.getElementById("progressbar")! as HTMLCanvasElement;
 let bar = document.getElementById("bar")!;
 
-
-let thumbnail_db: IDBDatabase | null = null;
-const openRequest = window.indexedDB.open("thumbnail_db", 1);
-
-openRequest.onerror = () => {
-  console.error("Database failed to open");
-};
-
-openRequest.onsuccess = (e) => {
-  thumbnail_db = openRequest.result;
+function onMessage(message: MessageEvent) {
+  //console.log(message.data);
+  thumbnail_array.push(message.data["thumbnail"]);
+  console.log(thumbnail_array.length);
+  let offset = message.data["time"] / video.duration * progressbar.width;
+  if (message.data["diff"] >= 200) {
+    let ctx = progressbar.getContext("2d")!;
+    ctx.fillStyle = "red";
+    ctx.fillRect(offset, 0, 1, progressbar.height);
+  }
 }
 
-openRequest.onupgradeneeded = (e) => {
-  thumbnail_db = openRequest.result;
-  const objectStore = thumbnail_db.createObjectStore("thumbnail_db", {keyPath:"timestamp"});
-  objectStore.createIndex("timestamp", "timestamp", { unique: true });
-};
+let worker: Worker = new Worker("/out/worker.js");;
+worker.addEventListener("message", onMessage);
 
 progressbar.addEventListener("click", (e) => {
     let x = e.offsetX;
@@ -64,16 +48,10 @@ progressbar.addEventListener("mousemove", (e) => {
 
     let thumbnail_time = document.getElementById("thumbnail_time")!;
     thumbnail_time.innerHTML = time;
-    let thumbnail_img = <HTMLImageElement> document.getElementById("thumbnail_img")!;
-
-    let transaction = thumbnail_db!.transaction("thumbnail_db", "readonly");
-    let objectStore = transaction.objectStore("thumbnail_db");
-    let request = objectStore.get(t);
-    request.addEventListener("success", (e) => {
-      let data = request.result;
-      if (data == null) {return;}
-      thumbnail_img.src = data.thumbnail;
-    });
+    if (thumbnail_array.length > t) {
+        let thumbnail_img = document.getElementById("thumbnail_img")! as HTMLImageElement;
+        thumbnail_img.src = URL.createObjectURL(thumbnail_array[t]);
+    }
 });
 
 // progressbar.addEventListener("mouseout", (e) => {
@@ -96,7 +74,7 @@ video.addEventListener("click", (e) => {
 
 video.addEventListener("timeupdate", function() {
     let t = video.currentTime.toFixed(0);
-    bar.style.width = (video.currentTime / video.duration) * 100 + "%";
+    //bar.style.width = (video.currentTime / video.duration) * 100 + "%";
     timestamp.innerHTML = toTimeFormat(t);
 });
 
@@ -136,10 +114,7 @@ pause_button.addEventListener("click", (e) => {
 
 // Worker setup.
 function start_worker(dataUri) {
-  const canvas = document.querySelector("canvas").transferControlToOffscreen();
-  const worker = new Worker("/out/worker.js");
-  worker.addEventListener("message", setStatus_func);
-  worker.postMessage({dataUri, canvas}, [canvas]);
+  worker.postMessage({dataUri}, );
 }
 
 
