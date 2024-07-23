@@ -117,6 +117,10 @@ let file_name = "timeline.txt";
 let progressbar = document.getElementById("progressbar");
 let bar = document.getElementById("bar");
 
+task_text.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+});
+
 progressbar.addEventListener("click", (e) => {
     let x = e.offsetX;
     let w = progressbar.offsetWidth;
@@ -186,10 +190,13 @@ add.addEventListener("click", () => {
 });
 
 event_text.addEventListener("keydown", (e) => {
-    if (e.keyCode === 13) {
+    if (e.code === "Enter") {
         e.preventDefault();
         add.click();
+    } else {
+      video.pause();
     }
+    e.stopPropagation();
 });
 
 let play_button = document.getElementById("paly");
@@ -235,6 +242,10 @@ timeline.addEventListener("click", (e) => {
     video.currentTime = time_sec;
 });
 
+timeline.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+});
+
 window.addEventListener("load", () => {
     timeline.value = localStorage.getItem("timeline");
 });
@@ -256,7 +267,7 @@ save.addEventListener("click", (e) => {
 });
 
 window.addEventListener("keydown", (e) => {
-  if (e.code == "F1") {
+  if (e.code == "ArrowUp") {
     e.preventDefault();
     if (video.paused) {
       video.play();
