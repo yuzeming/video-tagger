@@ -33,12 +33,43 @@
         padding: 5px;
         z-index: 100;
       }
+      #keyboard_shortcut {
+        position: absolute;
+        display: block;
+        background-color: #f8f9fa;
+        border: 1px solid #000;
+        padding: 20px;
+        z-index: 100;
+        top: 40%;
+        left: 40%;
+      }
+      #pause_screen {
+        position: absolute;
+        display: none;
+        background-color: rgba(0, 0, 255, 0.2);
+        z-index: 200;
+        bottom: 100px;
+        left: 40px;
+        padding: 20px;
+      }
     </style>
     </head>
   <body>
     <div class="container-fluid">
       <div class="row">
         <div class="col-9">
+          <div id="keyboard_shortcut">
+            <ul>
+              <li>ArrowUp: Focus on Event Text and Pasue Video</li>
+              <li>ArrowDown: Blur and Continue</li>
+              <li>ArrowRight: Forward 5 sec</li>
+              <li>ArrowLeft: Backward 5 sec</li>
+              <li>Space: Play/Pause</li>
+            </ul>
+          </div>
+          <div id="pause_screen" style="display: none;">
+            <h1 style="color: blue;">Paused <i class="bi bi-pause-btn"></i></h1>
+          </div>
           <video id="main_video"></video>
         </div>
       <div id="sidebar" class="col-3">
@@ -116,7 +147,7 @@ let save = document.getElementById("save");
 let file_name = "timeline.txt";
 let progressbar = document.getElementById("progressbar");
 let bar = document.getElementById("bar");
-
+let pause_screen = document.getElementById("pause_screen");
 task_text.addEventListener("keydown", (e) => {
     e.stopPropagation();
 });
@@ -175,10 +206,12 @@ video.addEventListener("timeupdate", function() {
 let status_icon = document.getElementById("status_icon");
 
 video.addEventListener("play", (e) => {
+    pause_screen.style.display = "none";
     status_icon.className = "bi bi-play-circle";
 });
 
 video.addEventListener("pause", (e) => {
+    pause_screen.style.display = "block";
     status_icon.className = "bi bi-pause-circle";
 });
 
@@ -187,13 +220,18 @@ add.addEventListener("click", () => {
     event_text.value = "";
     timeline.scrollTop = timeline.scrollHeight;
     video.play();
+    event_text.blur();
 });
 
 event_text.addEventListener("keydown", (e) => {
     if (e.code === "Enter") {
         e.preventDefault();
         add.click();
-    } else {
+    } if (e.code === "ArrowDown") {
+        video.play();
+        event_text.blur();
+    } 
+    else if (event_text.value.length > 0){
       video.pause();
     }
     e.stopPropagation();
@@ -216,6 +254,10 @@ file_select.addEventListener('change', () => {
     alert('Can\'t play: "' + file.type + '" type!')
     return
   }
+  // hide keyboard shortcut
+  let keyboard_shortcut = document.getElementById("keyboard_shortcut");
+  keyboard_shortcut.style.display = "none";
+
   video.src = window.URL.createObjectURL(file)
   file_name = file.name + ".txt";
 })
@@ -268,14 +310,16 @@ save.addEventListener("click", (e) => {
 
 window.addEventListener("keydown", (e) => {
   if (e.code == "ArrowUp") {
+    video.pause();
+    event_text.focus();
     e.preventDefault();
-    if (video.paused) {
-      video.play();
-    } else {
-      video.pause();
-      event_text.focus();
-    }
   } 
+  else if (e.code == "ArrowDown") 
+  {
+    video.play();
+    task_text.blur();
+    e.preventDefault();
+  }
   else if (e.code == "ArrowRight" ) 
   {
     video.currentTime += 5;
@@ -283,6 +327,14 @@ window.addEventListener("keydown", (e) => {
   else if (e.code == "ArrowLeft")
   {
     video.currentTime -= 5;
+  }
+  else if (e.code == "Space")
+  {
+    if (video.paused) {
+        video.play();
+    } else {
+        video.pause();
+    }
   }
 });
     </script>
