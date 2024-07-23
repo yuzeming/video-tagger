@@ -227,14 +227,13 @@ event_text.addEventListener("keydown", (e) => {
     if (e.code === "Enter") {
         e.preventDefault();
         add.click();
-    } if (e.code === "ArrowDown") {
+    } else if (e.code === "ArrowDown") {
         video.play();
         event_text.blur();
-    } 
-    else if (event_text.value.length > 0){
+    } else if (event_text.value.length > 0){
       video.pause();
+      e.stopPropagation();
     }
-    e.stopPropagation();
 });
 
 let play_button = document.getElementById("paly");
